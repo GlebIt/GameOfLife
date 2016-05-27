@@ -1,0 +1,32 @@
+<resources>
+    <string name="app_name">Game of life</string>
+
+    <string name="hello_world">Hello world!</string>
+    <string name="action_about">About</string>
+    <string name="action_main">Play</string>
+    <string name="title_activity_test">TestActivity</string>
+    <string name="title_activity_test_activity2">TestActivity2</string>
+    <string name="button_start_text">Start</string>
+    <string name="button_pause_text">Pause</string>
+    <string name="text_view_speed_text">Speed:</string>
+    <string name="button_reset_text">Clear</string>
+    <string name="button_next_text">Next</string>
+    <string name="button_random_text">Random</string>
+    <string name="button_save_text">Save</string>
+    <string name="button_load_text">Load</string>
+    <string name="save_dialog_text">Enter preset name</string>
+    <string name="open_dialog_title">Open preset</string>
+    <string name="cancel_button_text">Cancel</string>
+    <string name="ok_button_text">OK</string>
+    <string name="save_dialog_title">Save preset</string>
+    <string name="title_activity_about">AboutActivity</string>
+
+    <string name="about_text">
+        <![CDATA[
+        Author: Gleb Itenberg<br/><br/>-Любая клетка может быть в двух состояниях, живом (темный цвет) или мертвом (светлый цвет)<br/>
+        -Клетка имеет 8 соседей, за исключением крайних положений у границы<br/>
+        -Если у мертвой (светлый цвет) клетки ровно 3 соседа – в следующем поколении она становится живой (темный цвет))<br/>
+        -Если у живой (светлый цвет) клетки меньше 2х или более 3х соседей – она становится мертвой (светлый цвет))<br/>
+        ]]>
+    </string>
+</resources>
