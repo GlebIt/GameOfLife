@@ -11,21 +11,21 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.SeekBar;
 import android.widget.TextView;
 
 import java.util.ArrayList;
 
 
-public class MainActivity extends ActionBarActivity {
+public class MainActivity extends ActionBarActivity implements LifeObserver {
 
-    protected Button mButtonStart;
-    protected Button mButtonPause;
-    protected Button mButtonReset;
-    protected Button mButtonNext;
-    protected Button mButtonRandom;
-    protected Button mButtonSave;
-    protected Button mButtonOpen;
+    protected ImageView mImgStart;
+    protected ImageView mImgReset;
+    protected ImageView mImgNext;
+    protected ImageView mImgRandom;
+    protected ImageView mImgSave;
+    protected ImageView mImgOpen;
     protected LifeGrid mLifeGrid;
     protected SeekBar mSpeedBar;
     protected TextView mSpeedText;
@@ -35,26 +35,25 @@ public class MainActivity extends ActionBarActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        mButtonStart=(Button)findViewById(R.id.btnStart);
-        mButtonPause=(Button)findViewById(R.id.btnPause);
-        mButtonReset=(Button)findViewById(R.id.btnReset);
-        mButtonNext=(Button)findViewById(R.id.btnNext);
-        mButtonRandom=(Button)findViewById(R.id.btnRandom);
-        mButtonSave=(Button)findViewById(R.id.btnSave);
-        mButtonOpen=(Button)findViewById(R.id.btnOpen);
+        mImgStart =(ImageView)findViewById(R.id.imgStart);
+        mImgReset =(ImageView)findViewById(R.id.imgReset);
+        mImgNext =(ImageView)findViewById(R.id.imgNext);
+        mImgRandom =(ImageView)findViewById(R.id.imgRandom);
+        mImgSave =(ImageView)findViewById(R.id.imgSave);
+        mImgOpen =(ImageView)findViewById(R.id.imgOpen);
         mLifeGrid=(LifeGrid)findViewById(R.id.lifeGrid);
         mSpeedBar=(SeekBar)findViewById(R.id.speedBar);
         mSpeedText=(TextView)findViewById(R.id.speedTextView);
 
         mLifeGrid.requestFocus();
+        mLifeGrid.subscribe(this);
 
-        mButtonStart.setOnClickListener(btnStartOnClickListener);
-        mButtonPause.setOnClickListener(btnPauseOnClickListener);
-        mButtonReset.setOnClickListener(btnResetOnClickListener);
-        mButtonNext.setOnClickListener(btnNextOnClickListener);
-        mButtonRandom.setOnClickListener(btnRandomOnClickListener);
-        mButtonSave.setOnClickListener(btnSaveOnClickListener);
-        mButtonOpen.setOnClickListener(btnOpenOnClickListener);
+        mImgStart.setOnClickListener(imgStartOnClickListener);
+        mImgReset.setOnClickListener(imgResetOnClickListener);
+        mImgNext.setOnClickListener(imgNextOnClickListener);
+        mImgRandom.setOnClickListener(imgRandomOnClickListener);
+        mImgSave.setOnClickListener(imgSaveOnClickListener);
+        mImgOpen.setOnClickListener(imgOpenOnClickListener);
         mSpeedBar.setOnSeekBarChangeListener(speedBarChangeListener);
 
         mSpeedText.setText(getString(R.string.text_view_speed_text)+mLifeGrid.getDelay()/1000);
@@ -81,45 +80,49 @@ public class MainActivity extends ActionBarActivity {
         }
     };
 
-    View.OnClickListener btnOpenOnClickListener=new View.OnClickListener() {
+    View.OnClickListener imgOpenOnClickListener =new View.OnClickListener() {
         @Override
         public void onClick(View v) {
             showOpenDialog();
         }
     };
 
-    View.OnClickListener btnSaveOnClickListener=new View.OnClickListener() {
+    View.OnClickListener imgSaveOnClickListener =new View.OnClickListener() {
         @Override
         public void onClick(View v) {
             openSaveDialog();
         }
     };
 
-    View.OnClickListener btnRandomOnClickListener=new View.OnClickListener() {
+    View.OnClickListener imgRandomOnClickListener =new View.OnClickListener() {
         @Override
         public void onClick(View v) {
             mLifeGrid.randomField();
         }
     };
 
-    View.OnClickListener btnNextOnClickListener=new View.OnClickListener() {
+    View.OnClickListener imgNextOnClickListener =new View.OnClickListener() {
         @Override
         public void onClick(View v) {
             mLifeGrid.nextGeneration();
         }
     };
 
-    View.OnClickListener btnResetOnClickListener=new View.OnClickListener() {
+    View.OnClickListener imgResetOnClickListener =new View.OnClickListener() {
         @Override
         public void onClick(View v) {
             mLifeGrid.reset();
         }
     };
 
-    View.OnClickListener btnStartOnClickListener=new View.OnClickListener() {
+    View.OnClickListener imgStartOnClickListener =new View.OnClickListener() {
         @Override
         public void onClick(View v) {
-            mLifeGrid.start();
+            //mLifeGrid.start();
+            if(mLifeGrid.getCurrentMode()==Mode.RUNNING)
+                mLifeGrid.pause();
+            else if(mLifeGrid.getCurrentMode()==Mode.PAUSE)
+                mLifeGrid.start();
         }
     };
 
@@ -140,11 +143,11 @@ public class MainActivity extends ActionBarActivity {
     private void showOpenDialog()
     {
         final ArrayList<String> items=StorageAdapter.getConfigs(this);
-        CharSequence[] cItmes=items.toArray(new CharSequence[items.size()]);
+        CharSequence[] cItems=items.toArray(new CharSequence[items.size()]);
 
         AlertDialog.Builder builder=new AlertDialog.Builder(this);
         builder.setTitle(getString(R.string.open_dialog_title))
-                .setItems(cItmes, new DialogInterface.OnClickListener() {
+                .setItems(cItems, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         String selected = items.get(which);
@@ -209,5 +212,14 @@ public class MainActivity extends ActionBarActivity {
         }
 
         return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    public void onStatusChanged(Mode status)
+    {
+        if(status==Mode.RUNNING)
+            mImgStart.setImageDrawable(getResources().getDrawable(R.drawable.ic_pause));
+        else if(status==Mode.PAUSE)
+            mImgStart.setImageDrawable(getResources().getDrawable(R.drawable.ic_play));
     }
 }
