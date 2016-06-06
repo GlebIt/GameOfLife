@@ -205,7 +205,7 @@ public class LifeGrid extends View
         update();
         invalidate();
     }
-
+//bla bla bla
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         int x=(int)(event.getX()/mActualCellWidth);
