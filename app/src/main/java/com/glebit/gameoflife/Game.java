@@ -1,35 +1,84 @@
 package com.glebit.gameoflife;
 
+import android.os.Handler;
+import android.os.Message;
+
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Observable;
 import java.util.Random;
 
 /**
  * Created by Itenberg on 25.05.2016.
  */
-public class Game {
+public class Game extends Observable{
 
+    private byte[][] mGameGrid;
+    private int mDelay=100;
+    private Mode mCurrentMode=Mode.PAUSE;
     private int mHeight=5;
     private int mWidth=5;
-    private byte[][] mGameGrid;
+    private ArrayList<LifeObserver> subscribers=new ArrayList<>();
 
     public static final int ALIVE=1;
     public static final int DEAD=0;
-
-    public int getHeight() {
-        return mHeight;
-    }
-
-    public int getWidth() {
-        return mWidth;
-    }
 
     // игровое поле
     public byte[][] getGameGrid() {
         return mGameGrid;
     }
 
+    public int getWidth() {
+        return mWidth;
+    }
+
     public void setGameGrid(byte[][] gameGrid) {
         mGameGrid = gameGrid;
+        setChanged();
+        notifyObservers(gameGrid);
+    }
+
+    public int getDelay() {
+        return mDelay;
+    }
+
+    public void setDelay(int delay) {
+        mDelay = delay;
+    }
+
+    public Mode getCurrentMode() {
+        return mCurrentMode;
+    }
+
+    private RefreshHandler mRedrawHandler = new RefreshHandler();
+
+    class RefreshHandler extends Handler {
+
+        @Override
+        public void handleMessage(Message message) {
+            if(mCurrentMode==Mode.RUNNING)
+                update();
+        }
+
+        public void sleep(long delayMillis) {
+            this.removeMessages(0);
+            sendMessageDelayed(obtainMessage(0), delayMillis);
+        }
+    };
+
+    public void changeSize(int newWidth, int newHeight)
+    {
+        byte[][] newGrid=new byte[newWidth][newHeight];
+
+        System.arraycopy(mGameGrid, 0, newGrid, 0, mGameGrid.length);
+
+        for(int i=0; i<newGrid.length; i++)
+        newGrid[i]=Arrays.copyOf(newGrid[i], newHeight);
+
+        mWidth=newWidth;
+        mHeight=newHeight;
+        mGameGrid=newGrid;
+        gridChanged();
     }
 
     public Game(int width, int height)
@@ -37,26 +86,50 @@ public class Game {
         mWidth=width;
         mHeight=height;
         mGameGrid=new byte[mWidth][mHeight];
+        gridChanged();
+    }
+
+    private void gridChanged() {
+        setChanged();
+        notifyObservers(mGameGrid);
     }
 
     // сбросить поле
     public void reset()
     {
+        pause();
         mGameGrid=new byte[mWidth][mHeight];
+        gridChanged();
     }
 
-    // изменяем статус клетки
-    public void changeCellStatus(int x, int y)
+    public void oneStepForward()
     {
-        if(mGameGrid[x][y]==ALIVE)
-            mGameGrid[x][y]=DEAD;
-        else if(mGameGrid[x][y]==DEAD)
-            mGameGrid[x][y]=ALIVE;
+        pause();
+        nextGeneration();
     }
 
-    public void makeCellAlive(int x, int y)
+    public void start()
     {
-        mGameGrid[x][y]=ALIVE;
+        if(mCurrentMode!=Mode.RUNNING)
+            changeMode(Mode.RUNNING);
+
+        update();
+    }
+
+    public void pause()
+    {
+        if(mCurrentMode!=Mode.PAUSE)
+            changeMode(Mode.PAUSE);
+    }
+
+    private void update()
+    {
+        if(!isContainsAlive())
+            changeMode(Mode.PAUSE);
+        else {
+            nextGeneration();
+            mRedrawHandler.sleep(mDelay);
+        }
     }
 
     public boolean isContainsAlive()
@@ -70,7 +143,7 @@ public class Game {
     }
 
     // создаем следующие поколение
-    public void nextGeneration()
+    private void nextGeneration()
     {
         byte[][] newGenerationGrid=new byte[mWidth][mHeight];
         int neighborsCount=0;
@@ -86,6 +159,7 @@ public class Game {
                     newGenerationGrid[i][j]=mGameGrid[i][j];
             }
         mGameGrid=newGenerationGrid;
+        gridChanged();
     }
 
     // считаем соседей(возможно есть способ лучше?)
@@ -112,6 +186,7 @@ public class Game {
     // рандомно заполняем поле
     public void generateRandomField()
     {
+        reset();
         int fieldSize=mWidth*mHeight;
         // min ~10% от общего количества клеток
         int min=(int)Math.round(fieldSize*0.1);
@@ -127,5 +202,39 @@ public class Game {
             y=rnd.nextInt(mHeight);
             makeCellAlive(x, y);
         }
+        gridChanged();
+    }
+
+    // изменяем статус клетки
+    public void changeCellStatus(int x, int y)
+    {
+        if(mGameGrid[x][y]==ALIVE)
+            mGameGrid[x][y]=DEAD;
+        else if(mGameGrid[x][y]==DEAD)
+            mGameGrid[x][y]=ALIVE;
+
+        gridChanged();
+    }
+
+    public void makeCellAlive(int x, int y)
+    {
+        mGameGrid[x][y]=ALIVE;
+    }
+
+    public void subscribe(LifeObserver observer)
+    {
+        subscribers.add(observer);
+    }
+
+    public void removeObserver(LifeObserver observer)
+    {
+        subscribers.remove(observer);
+    }
+
+    private void changeMode(Mode newMode)
+    {
+        mCurrentMode=newMode;
+        for(LifeObserver o:subscribers)
+            o.onStatusChanged(newMode);
     }
 }

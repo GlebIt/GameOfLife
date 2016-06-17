@@ -1,82 +1,55 @@
 package com.glebit.gameoflife;
 
-import android.app.ActionBar;
-import android.app.Activity;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Paint;
-import android.os.Handler;
-import android.os.Message;
+import android.graphics.Rect;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
+import android.view.ScaleGestureDetector;
 import android.view.View;
-import android.view.ViewGroup;
 
-import java.util.ArrayList;
+import java.util.Observable;
+import java.util.Observer;
 
 /**
  * Created by Itenberg on 25.05.2016.
  */
-public class LifeGrid extends View
+public class LifeGrid extends View implements Observer
 {
     private static final int CELL_SIZE=16;
 
     private float mActualCellWidth;
     private float mActualCellHeight;
 
-    public Mode mCurrentMode=Mode.PAUSE;
-    private Game mGame;
-    private int mDelay=100;
+    private int mWidth =40;
+    private int mHeight =40;
+    private byte[][] fieldArray=new byte[40][40];
 
-    private ArrayList<LifeObserver> subscribers=new ArrayList<>();
+    private float mPosX;
+    private float mPosY;
+    private float mScaleFactor = 1.f;
+    private Canvas mCanvas;
 
-    public Mode getCurrentMode() {
-        return mCurrentMode;
+    public float getActualCellWidth() {
+        return mActualCellWidth;
     }
 
-    // время обновления в мс
-    public int getDelay() {
-        return mDelay;
+    public float getActualCellHeight() {
+        return mActualCellHeight;
     }
 
-    public void setDelay(int delay) {
-        mDelay = delay;
-    }
-
-    // игровое поле
-    public byte[][] getField()
+    @Override
+    public void update(Observable observable, Object data)
     {
-        return mGame.getGameGrid();
-    }
-
-    public void setField(byte[][] field)
-    {
-        if(mCurrentMode!=Mode.PAUSE)
-            changeMode(Mode.PAUSE);
-            //mCurrentMode=Mode.PAUSE;
-
-        mGame.setGameGrid(field);
-        invalidate();
-    }
-
-    private RefreshHandler mRedrawHandler = new RefreshHandler();
-    // отлавливаем обновления
-    class RefreshHandler extends Handler {
-
-        @Override
-        public void handleMessage(Message message) {
-            if(mCurrentMode==Mode.RUNNING)
-            {
-                LifeGrid.this.update();
-                LifeGrid.this.invalidate();
-            }
+        if(data instanceof byte[][])
+        {
+            fieldArray = (byte[][]) data;
+            mWidth =((byte[][]) data).length;
+            mHeight =((byte[][]) data)[0].length;
+            this.invalidate();
         }
-
-        public void sleep(long delayMillis) {
-            this.removeMessages(0);
-            sendMessageDelayed(obtainMessage(0), delayMillis);
-        }
-    };
+    }
 
     public LifeGrid(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -94,12 +67,14 @@ public class LifeGrid extends View
     @Override
     protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
         super.onLayout(changed, left, top, right, bottom);
-        int width=getWidth()/CELL_SIZE;
-        int height=getHeight()/CELL_SIZE;
-        mActualCellWidth=CELL_SIZE+(getWidth()-width*CELL_SIZE)/(float)width;
-        mActualCellHeight=CELL_SIZE+(getHeight()-height*CELL_SIZE)/(float)height;
-        if(mGame==null)
-            mGame = new Game(width, height);
+        // теперь размер ячеек меняется
+        mActualCellWidth=CELL_SIZE+(getWidth()- mWidth *CELL_SIZE)/(float) mWidth;
+        mActualCellHeight=CELL_SIZE+(getHeight()- mHeight *CELL_SIZE)/(float) mHeight;
+    }
+
+    public Rect getGridRect()
+    {
+        return mCanvas.getClipBounds();
     }
 
     // рисуем на канве поле и живые клетки
@@ -109,6 +84,14 @@ public class LifeGrid extends View
         // фон
         background.setColor(getResources().getColor(R.color.background_color));
         canvas.drawRect(0, 0, getWidth(), getHeight(), background);
+        canvas.save();
+
+        // двигаем грид только если он увеличен
+        if(mScaleFactor>1)
+            canvas.translate(mPosX, mPosY);
+
+        // увеличиваем
+        canvas.scale(mScaleFactor, mScaleFactor);
 
         drawBorders(canvas);
 
@@ -116,10 +99,12 @@ public class LifeGrid extends View
         aliveCell.setColor(getResources().getColor(R.color.cell_color));
 
         // отрисовка живых клеток
-        for(int i=0; i<mGame.getWidth(); i++)
-            for(int j=0; j<mGame.getHeight(); j++)
-                if(mGame.getGameGrid()[i][j]==Game.ALIVE)
+        for(int i=0; i<fieldArray.length; i++)
+            for(int j=0; j<fieldArray[i].length; j++)
+                if(fieldArray[i][j]==Game.ALIVE)
                     drawCell(canvas, i, j);
+
+        mCanvas=canvas;
     }
 
     // отрисовка ячеек
@@ -130,10 +115,12 @@ public class LifeGrid extends View
         line.setStyle(Paint.Style.STROKE);
         line.setStrokeWidth(1);
         // вертикальные
-        for(int i=0; i<mGame.getWidth(); i++)
+        mActualCellWidth=(float)getWidth()/fieldArray.length;
+        mActualCellHeight=(float)getHeight()/fieldArray[0].length;
+        for(int i=0; i<fieldArray.length; i++)
             canvas.drawLine(i*mActualCellWidth, 0, i*mActualCellWidth, getHeight(), line);
         // горизонтальные
-        for(int i=0; i<mGame.getHeight(); i++)
+        for(int i=0; i<fieldArray[0].length; i++)
             canvas.drawLine(0, i*mActualCellHeight, getWidth(), i*mActualCellHeight, line);
     }
 
@@ -144,92 +131,24 @@ public class LifeGrid extends View
         aliveCell.setColor(getResources().getColor(R.color.cell_color));
 
         canvas.drawRect(x * mActualCellWidth,
-                y * mActualCellHeight,
-                (x * mActualCellWidth) + (mActualCellWidth - 2),
-                (y * mActualCellHeight) + (mActualCellHeight - 2),
-                aliveCell);
+                        y * mActualCellHeight,
+                        (x * mActualCellWidth) + (mActualCellWidth - 2),
+                        (y * mActualCellHeight) + (mActualCellHeight - 2),
+                                                                aliveCell);
     }
 
-    public void start()
+    // вызываем при маштабировании или движении
+    public void onChanged(float posX, float posY, float scaleFactor)
     {
-        if(mCurrentMode!=Mode.RUNNING)
-        {
-            changeMode(Mode.RUNNING);
-            //mCurrentMode=Mode.RUNNING;
-            update();
-        }
-    }
+        float dx=getWidth()*mScaleFactor-getWidth();
+        float dy=getHeight()*mScaleFactor-getHeight();
 
-    public void pause()
-    {
-        if(mCurrentMode!=Mode.PAUSE)
-            changeMode(Mode.PAUSE);
-            //mCurrentMode=Mode.PAUSE;
-    }
+        if(posX<0 && posX>-dx)
+            mPosX=posX;
+        if(posY<0 && posY>-dy)
+            mPosY=posY;
 
-    public void reset()
-    {
-        if(mCurrentMode!=Mode.PAUSE)
-            changeMode(Mode.PAUSE);
-            //mCurrentMode=Mode.PAUSE;
-
-            mGame.reset();
-            invalidate();
-    }
-
-    public void randomField()
-    {
-        reset();
-        mGame.generateRandomField();
+        mScaleFactor=scaleFactor;
         invalidate();
-    }
-
-    private void update()
-    {
-        if(mGame!=null)
-            mGame.nextGeneration();
-
-        if(!mGame.isContainsAlive())
-            changeMode(Mode.PAUSE);
-            //mCurrentMode=Mode.PAUSE;
-
-        mRedrawHandler.sleep(mDelay);
-    }
-
-    public void nextGeneration()
-    {
-        if(mCurrentMode!=Mode.PAUSE)
-            changeMode(Mode.PAUSE);
-            //mCurrentMode=Mode.PAUSE;
-
-        update();
-        invalidate();
-    }
-//bla bla bla
-    @Override
-    public boolean onTouchEvent(MotionEvent event) {
-        int x=(int)(event.getX()/mActualCellWidth);
-        int y=(int)(event.getY()/mActualCellHeight);
-        mGame.changeCellStatus(x, y);
-        invalidate();
-        return super.onTouchEvent(event);
-    }
-
-    public void subscribe(LifeObserver observer)
-    {
-        subscribers.add(observer);
-    }
-
-    public void removeObserver(LifeObserver observer)
-    {
-        subscribers.remove(observer);
-    }
-
-    private void changeMode(Mode newMode)
-    {
-        mCurrentMode=newMode;
-
-        for(LifeObserver o:subscribers)
-            o.onStatusChanged(newMode);
     }
 }

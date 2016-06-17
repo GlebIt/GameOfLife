@@ -29,4 +29,5 @@
         -Если у живой (светлый цвет) клетки меньше 2х или более 3х соседей – она становится мертвой (светлый цвет))<br/>
         ]]>
     </string>
+    <string name="action_settings">Settings</string>
 </resources>
