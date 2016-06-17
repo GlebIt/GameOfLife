@@ -95,7 +95,7 @@ public class MainActivity extends ActionBarActivity implements LifeObserver {
                 if(dt<=MAXIMUM_TAP_TIME) {
                     int x = (int) (event.getX() / mLifeGrid.getActualCellWidth());
                     int y = (int) (event.getY() / mLifeGrid.getActualCellHeight());
-
+                    // если увеличено, приводим координаты.
                     if (mScaleFactor > 1) {
                         x = (int) ((event.getX() / mScaleFactor + mLifeGrid.getGridRect().left) / mLifeGrid.getActualCellWidth());
                         y = (int) ((event.getY() / mScaleFactor + mLifeGrid.getGridRect().top) / mLifeGrid.getActualCellHeight());
@@ -172,6 +172,9 @@ public class MainActivity extends ActionBarActivity implements LifeObserver {
             mScaleFactor *= detector.getScaleFactor();
             mScaleFactor = Math.max(0.5f, Math.min(mScaleFactor, 5.0f));
 
+            // если увеличили больше 1, то просто увеличиваем
+            // если увеличили относительно текущего состояния(меньше 1), увеличиваем на дельту
+            // если уменьшили, меняем разер поля. После изменения размера - грид перерусуется
             if(mScaleFactor>=1)
                 mLifeGrid.onChanged(mPosX, mPosY, mScaleFactor);
             else{
